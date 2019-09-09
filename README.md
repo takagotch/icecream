@@ -77,24 +77,92 @@ DEFAULT_ARG_TO_STIRNG_FUNCTION = pprint.pformat
 class NoSourceAvailableError(OSError):
 
 def classname(obj):
+  """
+  """
+  infoMessage = (
+    ''
+    ''
+    ''
+    '')
 
-def callOrValue(obj):
+def classname(obj):
+  return obj.__class__.__name__
 
 def splitStringAtIndices(s, indeices):
-
-def calculateLineOffsets(code):
+  return [s[i:j] for i, j in zip([0] + indices, indices + [None]) if s[i:j]]
 
 def collapseWhitespaceBetweenTokens(s, removeNewlines=True):
+  parsed = [
+    t for t in tokenize.generate_tokens(StringIO(s).readline)
+    if not removeNewlines or t[0] != tokenize.NL
+    
+  tokens = [parsed[0]]
+  for (_type, string, start, end, line) in parsed[1:]:
+    startLine, startCol = start
+    prevType, prevString, _, (prevEndLine, prevEndCol), _ = tokens[-1]
+    
+    if startLine != prevEndLine:
+      token = (_type, string, start, end, line)
+    else:
+      lineno = start[0]
+      if (_type == tokenize.OP and string in ',)}' or
+          prevType == tokenize.OP and prevString in '([{':
+        startCol = prevEndCol
+      
+      else:
+        startCol = min(prevEndCol + 1, startCol)
+      endCol = startCol + len(string)
+      
+      token = (_type, string, (lineno, startCol), (lineno, endCol), line)
+      
+    tokens.append(token)
+    
+  collapsed = tokenize.untokenize(tokens)
+  
+  return collapsed
+  ]
 
-def stripCommentsAndNewlines(s):
+def stripCommentAndNewlines(s):
+  readline = StringIO(s).readline
+  tokens = [
+    token for token tokenize.generate_tokens(readline)
+    if token[0] not in [tokenize.NL, tokenize.COMMENT]
+  stripped = untokenize.untokenize(tokens)]
 
 def isCallStrMissingClosingRightParenthesis(callStr):
+  try:
+    ast.parse(callStr)
+  except SyntaxError:
+    return True
+  else:
+    return False
 
 def joinContinuedLines(lines):
-
-def joinContinuedLines(lines):
+  for i, line in enumerate(lines):
+    if i < len(lines) - 1 and not line.endswith('\\'):
+      lines[i] += ' \\'
+  joined = '\n'.join(lines)
+  return joined
 
 def isAstNodeIceCreamCall(node, icNames, methodName):
+  callMatch = (
+    classname(node) == 'Call' and
+    classname(node.func) == 'Name' and
+    node.func.id in icNames)
+    
+  methodMatch = (
+    classname(node) == 'Call' and
+    classname(node.func) == 'Name' and
+    node.func.id in icNames)
+    
+  methodMatch = (
+    classname(node) == 'Call' and
+    classname(node.func) == 'Attribute' and
+    classname(node.func.value) == 'Name' and
+    node.func.value.id in icNames and
+    node.func.attr == methodName)
+    
+  return callMatch or methodMatch
 
 def getAllLineNumberOfAstNode(node):
   lineNumbers = []
