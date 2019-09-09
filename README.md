@@ -13,7 +13,7 @@ import ast
 
 
 
-@bindStaticVariable()
+@bindStaticVariable('formatter', Terminal256Formatter(style=SolarizedDark))
 @bindStaticVariable(
   'lexer', PyLexer(ensurenl=False)if PYTHON2 else Py3Lexer(ensurenl=False))
 def colorize(s):
@@ -27,6 +27,12 @@ def supprtTerminalColorsInWindows():
   colorama.deinit()
   
 def stderrPrint(*args):
+  print(*args, file=sys.stderr)
+  
+def colorizedStderrPrint(s):
+  colored = colorize(s)
+  with supportTerminatlColorsInWindows():
+    stderrPrint(colored)
 
 
 
