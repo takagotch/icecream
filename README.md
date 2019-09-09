@@ -97,6 +97,20 @@ def joinContinuedLines(lines):
 def isAstNodeIceCreamCall(node, icNames, methodName):
 
 def getAllLineNumberOfAstNode(node):
+  lineNumbers = []
+  
+  if hasattr(node, 'lineno'):
+    lineNumbers.append(node.lineno)
+    
+  children = (
+    getattr(node, 'args', []) +
+    getattr(node, 'elts', []) +
+    getattr(node, 'keys', []) + getattr(node, 'values', []))
+   
+  for node in children:
+    lineNumbers.extend(getAllLineNumbersOfAstNode(node))
+    
+  return list(set(lineNumbers))
 
 def prefixLinesAfterFirst(prefix, s):
   lines = s.splitlines(True)
