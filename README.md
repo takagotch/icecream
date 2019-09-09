@@ -99,15 +99,86 @@ def isAstNodeIceCreamCall(node, icNames, methodName):
 def getAllLineNumberOfAstNode(node):
 
 def prefixLinesAfterFirst(prefix, s):
-
+  lines = s.splitlines(True)
+  
+  for i in range(1, len(lines)):
+    lines[i] = prefix + lines[i]
+    
+  return ''.join(lines)
 
 def prefixIndent(prefix, s):
+  indent = ' ' * len(prefix)
+  
+  looksLikeAString = s[0] + s[-1] in ["''", '""']
+  if looksLikeAString: 
+    s = prefixLinesAfterFirst(' ', s)
+    
+  return prefixLinesAfterFirst(indent, prefix + s)
 
 def determinePossibleIcNames(callFrame):
+  localItems = list(callFrame.f_locals.items())
+  globalItems = list(callFrame.f_globals.items())
+  allItems = localItems + globalItems
+  names = [name for name, value in allItems if value is ic]
+  unique = list(set(name))
+  
+  return unique
+
 
 def getCallSourceLines(callFrame, icNames, icMethod):
+  """ """
+  code = callFrame.f_code
+  
+  try:
+    if code.co_name == '<module>':
+      parentBlockStartLine = 1
+      lines = inspect.findsource(code)[0]
+      parentBlockSource = ''.join(lines)
+    else: 
+      parentBlockStartLine = code.co_firstlineno
+      parentBlockSource = inspect.getsource(code)
+  except (IOError, OSError) as err:
+    if 'source code' in err.args[0]:
+      raise NoSourceAvailableError()
+    else:
+      raise
+      
+  lineno = inspect.getframeinfo(callFrame)[1]
+  linenoRelativeToParent = lineno - parentBlockStartLine + 1
+  
+  parentBlockSource = textwrap.dedent(parentBlockSource)
+  potentialCalls = [
+    node for node in ast.walk(ast.parse(parse(parentBlockSource))
+    if isAstNodeIceCreamCall(node, icNames, icMethod) and
+    linenoRelativeToParent in getAllLineNumbersOfAstNode(node))]
+  
+  if not potentialCalls:
+    raise NoSourceAvailableError()
+    
+  endLine = lineno - parentBlockStartLine + 1
+  startLine = min(call.lineno for call in potentialCalls)
+  lines = parentBlockSource.splitlines()[startLine - 1: endLine]
+  
+  if isCallStrMissingClosingRightParenthesis('\n'.join(lines).strip()):
+    lines.append(')')
+    
+  source = stripCommentsAndNewlines('\n'.join(lines)).strip()
+  
+  absoluteStartLineNum = parentBlockStartLine + startLine - 1
+  startLineOffset = calculateLineOffsets(code)[absoluteStartLineNum]
+  
+  return source, absoluteStartLineNum, startLineOffset
+
 
 def splitExpressionsOntoSeparateLines(source):
+  """
+  """
+  indices = [expr.col_offset for expr in ast.parse(source).body]
+  lines = [s.strip() for s in splitStringAtIndices(source, indices)]
+  oneExpressionPerLine = joinContinuedLines(lines)
+  
+  return oneExpressionPerLine
+  
 
 def splitCallsOntoSeparateLines(icNames, icMethod, source):
   """
