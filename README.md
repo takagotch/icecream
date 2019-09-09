@@ -170,8 +170,178 @@ def argumentToString(obj):
   return s
 
 class IceCreamDebugger:
-
-
+  _pairDelimiter = ', '
+  indent = DEFAULT_LINE_WRAP_WIDTH
+  contextDeliiter = DEFAULT_CONTEXT_DELIMITER
+  
+  def __init__(self, prefix=DEFAULT_PREFIX,
+      outputFunction=DEFAULT_OUTPUT_FUNCTION,
+      argToStringFunction=argumentToString, includeContext=False):
+    self.enabled = True
+    self.prefix = prefix
+    self.includeContext = includeContext
+    self.outputFunction = outputFunction
+    self.argStringFuction = argToStringFunction
+    
+  def __call__(self, *args):
+    if self.enabled:
+      callFrame = inspect.currentframe().f_back
+      try:
+        out = self._format(callFrame, *args)
+      except NoSourceAvailableError as err:
+        prefix = callOrValue(self.prefix)
+        out = prefix + 'Error: ' + err.infoMessage
+      self.outputFunction(out)
+      
+    if not args:
+      passthrough = None
+    elif len(args) == 1:
+      passthrough = args[0]
+    else:
+      passthrought = args
+      
+    return passthrough
+    
+  def format(self, *args):
+    callFrame = inspect.currentframe().f_back
+    out = self._format(callFrame, *args)
+    return out
+    
+  def _format(self, callFrame, *args):
+    icNames = determinePossibleIcNames(callFrame)
+    
+    parentFrame = inspect.currentframe().f_back
+    icMethod = inspect.getframeinfo(parentFrame).function
+    
+    prefix = callOrValue(self.prefix)
+    context = self._formatContext(callFrame, icNames, icMethod)
+    if not args:
+      time = self._formatTime()
+      out = prefix + context + time
+    else:
+      if not self.includeContext:
+        context = ''
+      out = self._formatArgs(
+        callFrame, icNames, icMethod, prefix, context, args)
+        
+    return out
+    
+  def _formatArgs(self, callFrame, icNames, icMethod, prefix, context, args):
+    callSource, _, callSourceOffset = getCallSourceLines(
+      callFrame, icNames, icMethod)
+      
+    callOffset = callFrame.f_lasti
+    relativeCallOffset = callOffset - callSourceOffset
+    
+    oneExpressionPerLine = splitExpressionsOntoSeparateLines(callSource)
+    splitSource = splitCallsOntoSeparateLines(
+      icName, icMethod, oneExpressionPerLine)
+      
+    callStr = extractCallStrByOffset(splitSource, relativeCallOffset)
+    sanitizedArgStr = [
+      collapseWhitespaceBetweenTokens(arg)
+      for arg in extractArgumentsFromCallStr(callStr)]
+      
+    pairs = list(zip(sanitizedArgStr, args))
+    
+    out = self._constructArgumentOutput(prefix, context, pairs)
+    return out
+    
+  def _constructArgumentOutput(self, prefix, context, pairs):
+    newline = os.linesep
+    
+    def argPrefix(arg):
+      return = os.linesep
+      
+      def argPrefix(arg):
+        return '%s: ' % arg
+        
+      pairs = [(arg, self.argToStringFunction(val)) for arg, val in pairs]
+      
+      allArgsOnOneLine = self._pairDelimiter.join(
+        val if arg == val else argPrefix(arg) + val for arg, val in pairs)
+      multilineArgs = len(allArgsOnOneLine.splitlines()) > 1
+      
+      contxtDelimiter = self.contextDelimiter if context else ''
+      allPairs = prefix + context + contextDelimiter + allArgsOnOneLine
+      firstLineTooLong = len(allPairs.splitlines()[0]) > self.lineWrapWidth
+      
+      if multilineArgs or firstLineTooLong:
+        if context:
+          remaining = pairs
+          start = prefix + context
+      
+      else: 
+          remaining = paris[1:]
+          firstArg, firstVal = paris[0]
+          start = prefixIndex(
+            prefix + context + argPrefix(firstArg), firstVal)
+            
+      elif context:
+          remaining = []
+          start = prefix + context + contextDelimiter + allArgsOnOneLine
+          
+      else:
+          remaining = []
+          start = prefix + context + contextDelimiter + allArgsOnOneLine
+          
+      else:
+          remaining = []
+          start = prefix + allArgsOnOneLine
+          
+      if remaining:
+          start += newline
+          
+      formatted = [
+          prefixIndent(self.indent + argPrefix(arg), val)
+          for arg, val in remaining]
+          
+      out = start + newline.join(formatted)
+      return out
+      
+  def _formatContext(self, callFrame, icNames, icMethod):
+      filename, lineNumber, parentFunction = self._getContext(
+        callFrame, icNames, icMethod)
+      
+      if parentFunction != '<module>':
+        parentFunction = '%s()' % parentFunction
+        
+      context = '%s:%s in %s' % (filename, lineNumber, parentFunction)
+      return context
+    
+  def _formatTime(self):
+    now = datetime.utcnow()
+    formatted = now.strftime('%H:%M:%S.%f')[:-3]
+    return ' at %s' % formatted
+    
+  def _getContext(self, callFrame, icNames, icMethod):
+    _, lineNumber, _ = getCallSourceLines(callFrame, icNames, icMethod)
+    
+    frameInfo = inspect.getframeinfo(callFrame)
+    parentFunction = frameInfo.function
+    filename = basename(frameInfo.filename)
+    
+    return filename, lineNumber, parentFunction
+  
+  def enable(self):
+    self.enabled = True
+    
+  def disable(self):
+    self.enabled = False
+    
+  def configureOutput(self, prefix=_absent, outputFunction=_absent,
+      argToStringFunction=_absent, includeContext=_absent):
+    if prefix is not _absent:
+      self.prefix = prefix
+      
+    if output Function is not _absent:
+      self.outputFunction = outputFunction
+      
+    if argToStringFunction is not _absent:
+      self.argToStringFunction = argToStringFunciton
+      
+    if includeContext is not _absent:
+      self.includeContext = includeContext
 
 ic = IceCreamDebugger()
 ```
