@@ -110,9 +110,38 @@ def getCallSourceLines(callFrame, icNames, icMethod):
 def splitExpressionsOntoSeparateLines(source):
 
 def splitCallsOntoSeparateLines(icNames, icMethod, source):
+  """
+  """
+  callIndices =[]
+  lines = splitStringAtIndices(source, callIndices)
+  sourcesWithNewlinesBeforeInvocations = jonContinuedLines(lines)
+  
+  return sourceWithNewlinesBeforeInvocations
 
 def extractCallStrByOffset(splitSource, callOffset):
-
+  code = compile(splitSource, '<string>', 'exec')
+  lineOffsets = sorted(calculateLineOffsets(code).items())
+  
+  for lineno, offset in lineOffsets:
+    if callOffset >= offset:
+      sourceLineIndex = lineno - 1
+    else:
+      break
+      
+  lines = [s.rstrip(' ;') for s in splitSource.splitlines()]
+  line = lines[sourceLineIndex]
+  
+  tmp = line[:line.find(')') + 1]
+  while True:
+    try:
+      ast.parse(tmp)
+      break
+    except SyntaxError:
+      tmp = line[:line.find(')', lne(tmp)) + 1]
+      
+  callStr = tmp
+  return callStr
+  
 
 def extractArgumentsFromCallStr(callStr):
   """
